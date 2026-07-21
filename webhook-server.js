@@ -17,6 +17,18 @@ const PLAN_CYCLES = {
   // price_1Tu8at2Y5OySBjTF5nUV9632 es el pago único de 2.700€, no aplica (no es suscripción)
 };
 
+// Suma meses en UTC, ajustando al último día del mes destino si este es más corto
+// (ej. 31 ene + 1 mes = 28/29 feb, en vez de desbordar a marzo).
+function addMonthsClamped(date, months) {
+  const day = date.getUTCDate();
+  const result = new Date(date);
+  result.setUTCDate(1);
+  result.setUTCMonth(result.getUTCMonth() + months);
+  const daysInTargetMonth = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate();
+  result.setUTCDate(Math.min(day, daysInTargetMonth));
+  return result;
+}
+
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   let event;
   try {
@@ -47,8 +59,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
   }
 
   const startDate = new Date(subscription.billing_cycle_anchor * 1000);
-  const cancelDate = new Date(startDate);
-  cancelDate.setMonth(cancelDate.getMonth() + cycles);
+  const cancelDate = addMonthsClamped(startDate, cycles);
   const cancelAtTimestamp = Math.floor(cancelDate.getTime() / 1000);
 
   try {
